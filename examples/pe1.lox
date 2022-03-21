@@ -1,0 +1,15 @@
+var sum = 0;
+var current = 0;
+var multiple_of_three = 3;
+var multiple_of_five = 5;
+while (current < 1000) {
+  sum = sum + current;
+  while (multiple_of_three <= current) multiple_of_three = multiple_of_three + 3;
+  while (multiple_of_five <= current) multiple_of_five = multiple_of_five + 5;
+  if (multiple_of_three < multiple_of_five) {
+    current = multiple_of_three;
+  } else {
+    current = multiple_of_five;
+  }
+}
+print sum;
