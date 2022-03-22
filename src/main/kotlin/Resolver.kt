@@ -1,6 +1,6 @@
 class Resolver(private val interpreter: Interpreter) : Expr.Visitor<Unit>, Stmt.Visitor<Unit> {
     private enum class FunctionType { NONE, FUNCTION, INITIALIZER, METHOD }
-    private enum class ClassType { NONE, CLASS }
+    private enum class ClassType { NONE, CLASS, SUBCLASS }
     private val scopes = ArrayDeque<MutableMap<String, Boolean>>()
     private var currentFunction = FunctionType.NONE
     private var currentClass = ClassType.NONE
@@ -40,6 +40,16 @@ class Resolver(private val interpreter: Interpreter) : Expr.Visitor<Unit>, Stmt.
         resolve(expr.obj)
     }
 
+    override fun visitSuper(expr: Expr.Super) {
+        when {
+            currentClass == ClassType.NONE ->
+                Lox.error(expr.keyword, "Can't use 'super' outside of a class.")
+            currentClass != ClassType.SUBCLASS ->
+                Lox.error(expr.keyword, "Can't use 'super' in a class with no superclass")
+        }
+        resolveLocal(expr, expr.keyword)
+    }
+
     override fun visitThis(expr: Expr.This) {
         if (currentClass == ClassType.NONE) Lox.error(expr.keyword, "Can't use 'this' outside of a class.")
         else resolveLocal(expr, expr.keyword)
@@ -69,6 +79,20 @@ class Resolver(private val interpreter: Interpreter) : Expr.Visitor<Unit>, Stmt.
         declare(stmt.name)
         define(stmt.name)
 
+        if (stmt.name.lexeme == stmt.superclass?.name?.lexeme) Lox.error(
+            stmt.superclass.name,
+            "A class can't inherit from itself."
+        )
+        stmt.superclass?.let {
+            currentClass = ClassType.SUBCLASS
+            resolve(it)
+        }
+
+        stmt.superclass?.let {
+            beginScope()
+            scopes.first()["super"] = true
+        }
+
         beginScope()
         scopes.first()["this"] = true
 
@@ -78,6 +102,7 @@ class Resolver(private val interpreter: Interpreter) : Expr.Visitor<Unit>, Stmt.
         }
 
         endScope()
+        if (stmt.superclass != null) endScope()
         currentClass = enclosingClass
     }
 

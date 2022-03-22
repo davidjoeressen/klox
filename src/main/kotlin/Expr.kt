@@ -23,6 +23,9 @@ abstract class Expr {
     class Set(val obj: Expr, val name: Token, val value: Expr) : Expr() {
         override fun <T> accept(visitor: Visitor<T>): T = visitor.visitSet(this)
     }
+    class Super(val keyword: Token, val method: Token) : Expr() {
+        override fun <T> accept(visitor: Visitor<T>): T = visitor.visitSuper(this)
+    }
     class This(val keyword: Token) : Expr() {
         override fun <T> accept(visitor: Visitor<T>): T = visitor.visitThis(this)
     }
@@ -42,6 +45,7 @@ abstract class Expr {
         fun visitLiteral(expr: Literal): T
         fun visitLogical(expr: Logical): T
         fun visitSet(expr: Set): T
+        fun visitSuper(expr: Super): T
         fun visitThis(expr: This): T
         fun visitUnary(expr: Unary): T
         fun visitVariable(expr: Variable): T

@@ -16,7 +16,9 @@ class AstPrinter : Expr.Visitor<String> {
     override fun visitSet(expr: Expr.Set): String =
         parenthesize("set", expr.obj.accept(this), expr.name.lexeme, expr.value.accept(this))
 
-    override fun visitThis(expr: Expr.This): String = "this"
+    override fun visitSuper(expr: Expr.Super): String = parenthesize(expr.keyword.lexeme, expr.method.lexeme)
+
+    override fun visitThis(expr: Expr.This): String = expr.keyword.lexeme
 
     override fun visitUnary(expr: Expr.Unary): String =
         parenthesize(expr.operator.lexeme, expr.right)
