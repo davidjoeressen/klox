@@ -13,11 +13,19 @@ class AstPrinter : Expr.Visitor<String> {
     override fun visitLiteral(expr: Expr.Literal): String =
         expr.value?.toString() ?: "nil"
 
+    override fun visitSet(expr: Expr.Set): String =
+        parenthesize("set", expr.obj.accept(this), expr.name.lexeme, expr.value.accept(this))
+
+    override fun visitThis(expr: Expr.This): String = "this"
+
     override fun visitUnary(expr: Expr.Unary): String =
         parenthesize(expr.operator.lexeme, expr.right)
 
     override fun visitCall(expr: Expr.Call): String =
         parenthesize(expr.callee.accept(this), *expr.arguments.toTypedArray())
+
+    override fun visitGet(expr: Expr.Get): String =
+        parenthesize("get", expr.obj.accept(this), expr.name.lexeme)
 
     override fun visitVariable(expr: Expr.Variable): String =
         expr.name.lexeme
@@ -27,4 +35,6 @@ class AstPrinter : Expr.Visitor<String> {
 
     private fun parenthesize(name: String, vararg exprs: Expr) =
         (listOf(name) + exprs.map { it.accept(this) }).joinToString(" ", "(", ")")
+
+    private fun parenthesize(vararg values: String) = values.joinToString(" ", "(", ")")
 }

@@ -1,7 +1,7 @@
 import kotlin.system.exitProcess
 
 class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Unit> {
-    val globals = Environment().apply {
+    private val globals = Environment().apply {
         define("clock", object : LoxCallable {
             override val arity: Int = 0
 
@@ -98,6 +98,18 @@ class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Unit> {
         }
     }
 
+    override fun visitSet(expr: Expr.Set): Any? {
+        val obj = evaluate(expr.obj)
+
+        if (obj !is LoxInstance) throw RuntimeError(expr.name, "Only instances have fields.")
+
+        val value = evaluate(expr.value)
+        obj.set(expr.name, value)
+        return value
+    }
+
+    override fun visitThis(expr: Expr.This): Any? = lookUpVariable(expr.keyword, expr)
+
     override fun visitUnary(expr: Expr.Unary): Any? {
         val right = evaluate(expr.right)
         return when (expr.operator.type) {
@@ -123,10 +135,28 @@ class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Unit> {
         return callee.call(this, arguments)
     }
 
+    override fun visitGet(expr: Expr.Get): Any? {
+        val obj = evaluate(expr.obj)
+        if (obj !is LoxInstance) throw RuntimeError(expr.name, "Only instances have properties.")
+        return obj.get(expr.name)
+    }
+
     override fun visitVariable(expr: Expr.Variable): Any? = lookUpVariable(expr.name, expr)
 
     override fun visitBlock(stmt: Stmt.Block) {
         executeBlock(stmt.statements, Environment(environment))
+    }
+
+    override fun visitClass(stmt: Stmt.Class) {
+        environment.define(stmt.name.lexeme, null)
+
+        val methods = stmt.methods.associate { method ->
+            val function = LoxFunction(method, environment, method.name.lexeme == "init")
+            method.name.lexeme to function
+        }
+
+        val klass = LoxClass(stmt.name.lexeme, methods)
+        environment.assign(stmt.name, klass)
     }
 
     override fun visitExpression(stmt: Stmt.Expression) {
@@ -134,7 +164,7 @@ class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Unit> {
     }
 
     override fun visitFunction(stmt: Stmt.Function) {
-        environment.define(stmt.name.lexeme, LoxFunction(stmt, environment))
+        environment.define(stmt.name.lexeme, LoxFunction(stmt, environment, false))
     }
 
     override fun visitIf(stmt: Stmt.If) {

@@ -11,6 +11,7 @@ class Parser(private val tokens: List<Token>) {
 
     private fun declaration(): Stmt? = try {
         when {
+            match(TokenType.CLASS) -> classDeclaration()
             match(TokenType.FUN) -> function("function")
             match(TokenType.VAR) -> varDeclaration()
             else -> statement()
@@ -18,6 +19,17 @@ class Parser(private val tokens: List<Token>) {
     } catch (e: ParseError) {
         synchronize()
         null
+    }
+
+    private fun classDeclaration(): Stmt {
+        val name = consume(TokenType.IDENTIFIER, "Expect class name.")
+        consume(TokenType.LEFT_BRACE, "Expect '{' before class body.")
+        val methods = mutableListOf<Stmt.Function>()
+        while (!check(TokenType.RIGHT_BRACE) && !isAtEnd()) {
+            methods.add(function("method"))
+        }
+        consume(TokenType.RIGHT_BRACE, "Expect '}' after class body.")
+        return Stmt.Class(name, methods)
     }
 
     private fun function(kind: String): Stmt.Function {
@@ -129,8 +141,9 @@ class Parser(private val tokens: List<Token>) {
         if (match(TokenType.EQUAL)) {
             val equals = previous()
             val value = assignment()
-            if (expr is Expr.Variable) {
-                return Expr.Assign(expr.name, value)
+            when (expr) {
+                is Expr.Variable -> return Expr.Assign(expr.name, value)
+                is Expr.Get -> return Expr.Set(expr.obj, expr.name, value)
             }
             parseError(equals, "Invalid assignment target.")
         }
@@ -167,10 +180,11 @@ class Parser(private val tokens: List<Token>) {
     private fun call(): Expr {
         var expr = primary()
         while (true) {
-            if (match(TokenType.LEFT_PAREN)) {
-                expr = finishCall(expr)
-            } else {
-                break
+            expr = when {
+                match(TokenType.LEFT_PAREN) -> finishCall(expr)
+                match(TokenType.DOT) ->
+                    Expr.Get(expr, consume(TokenType.IDENTIFIER, "Expected property name after '.'."))
+                else -> break
             }
         }
 
@@ -197,6 +211,7 @@ class Parser(private val tokens: List<Token>) {
         match(TokenType.TRUE) -> Expr.Literal(true)
         match(TokenType.NIL) -> Expr.Literal(null)
         match(TokenType.NUMBER, TokenType.STRING) -> Expr.Literal(previous().literal)
+        match(TokenType.THIS) -> Expr.This(previous())
         match(TokenType.IDENTIFIER) -> Expr.Variable(previous())
         match(TokenType.LEFT_PAREN) ->
             Expr.Grouping(expression().also { consume(TokenType.RIGHT_PAREN, "Expect ')' after Expression.") })

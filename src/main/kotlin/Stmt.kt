@@ -2,6 +2,9 @@ abstract class Stmt {
     class Block(val statements: List<Stmt>) : Stmt() {
         override fun <T> accept(visitor: Visitor<T>): T = visitor.visitBlock(this)
     }
+    class Class(val name: Token, val methods: List<Function>) : Stmt() {
+        override fun <T> accept(visitor: Visitor<T>): T = visitor.visitClass(this)
+    }
     class Expression(val expression: Expr) : Stmt() {
         override fun <T> accept(visitor: Visitor<T>): T = visitor.visitExpression(this)
     }
@@ -26,6 +29,7 @@ abstract class Stmt {
 
     interface Visitor<T> {
         fun visitBlock(stmt: Block): T
+        fun visitClass(stmt: Class): T
         fun visitExpression(stmt: Expression): T
         fun visitFunction(stmt: Function): T
         fun visitIf(stmt: If): T
